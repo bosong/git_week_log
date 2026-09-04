@@ -46,6 +46,13 @@ git_week_log do auto --yes
 
 # 4. 写入周报：自定义模式
 git_week_log do custom
+
+#   也可直接命令行传内容，多条用分号(;或；)分隔，自动加序号：
+git_week_log do custom "修复登录 bug; 优化首页性能"
+#   单条进度用 - 或 － 接在内容后，未写进度默认 100%：
+git_week_log do custom "功能A-100%；功能B-80%; 功能C"
+#   --progress 统一兜底未写进度的条：默认 100%
+git_week_log do custom "A; B" --progress 80
 ```
 
 ### Cookie 获取方法

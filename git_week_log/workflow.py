@@ -60,8 +60,10 @@ def _confirm_lines(lines):
 
 
 def _normalize_progress(raw):
-    """把进度统一为百分比字符串：100 -> 100%，空白默认 100%。"""
-    s = raw.strip()
+    """把进度统一为百分比字符串：100 -> 100%，None/空白默认 100%。"""
+    if raw is None:
+        return "100%"
+    s = str(raw).strip()
     if not s:
         return "100%"
     if s.endswith("%"):
@@ -123,17 +125,29 @@ def _run_custom_input(commits):
     return entries
 
 
-def _entries_from_text(content, progress="100%"):
-    """把命令行传入的日志文本按分号（中英文 ; ； 均支持）拆分为带序号的 entries。
+def _entries_from_text(content, progress=None):
+    """把命令行传入的日志文本拆分为带序号的 entries。
 
-    每条自动加序号（1. / 2. / ...），进度统一取 progress（默认 100%）。
+    拆分规则：
+    - 用中英文分号（; ；）切分多条日志；
+    - 每条段尾可用 - 或 － 附带进度，如 "修复bug-80%"；
+      未带进度时用 progress 参数，仍未给则默认 100%；
+    - 自动加序号（1. / 2. / ...）。
     """
-    if progress in (None, ""):
-        progress = "100%"
-    progress = _normalize_progress(progress)
-    parts = [p.strip() for p in re.split(r"[;；]", content) if p.strip()]
-    return [{"content": f"{i}. {p}", "progress": progress}
-            for i, p in enumerate(parts, 1)]
+    default = _normalize_progress(progress)
+    entries = []
+    for i, seg in enumerate(
+            [s.strip() for s in re.split(r"[;；]", content) if s.strip()],
+            start=1):
+        m = re.match(r"^(.*?)\s*[-－]\s*([0-9]+(?:\.[0-9]+)?%?)\s*$", seg)
+        if m and m.group(1).strip():
+            text = m.group(1).strip()
+            item_progress = _normalize_progress(m.group(2))
+        else:
+            text = seg
+            item_progress = default
+        entries.append({"content": f"{i}. {text}", "progress": item_progress})
+    return entries
 
 
 def run_do(mode=None, content=None, progress=None, force_yes=False):

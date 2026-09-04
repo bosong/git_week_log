@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name="git-week-log",
-    version="0.1.1",
+    version="0.1.2",
     description="从 Git 提交自动归纳并写入企业微信周报",
     packages=find_packages(),
     python_requires=">=3.7",

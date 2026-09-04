@@ -95,9 +95,10 @@ def main(argv=None):
     p.add_argument("mode", nargs="?", choices=["auto", "custom"],
                    help="模式：auto 自动总结（进度固定 100%%），custom 自定义录入；省略则交互选择")
     p.add_argument("content", nargs="?",
-                   help="custom 模式的日志内容，多条用分号(;或；)分隔，自动加序号；省略则进入交互录入")
+                   help="custom 模式的日志内容，多条用分号(;或；)分隔，自动加序号；"
+                        "单条进度可在末尾用 - 或 － 指定，如 \"修复bug-80%\"；省略则进入交互录入")
     p.add_argument("--progress", default=None,
-                   help="custom 模式传 content 参数时的统一进度，默认 100%%")
+                   help="custom 传 content 参数时未带进度的条的默认进度（默认 100%%）")
     p.add_argument("--yes", action="store_true", help="跳过内容确认（仅 auto 模式）")
     p.set_defaults(func=cmd_do)
 
