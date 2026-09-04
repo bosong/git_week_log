@@ -22,12 +22,13 @@ def _mask_cookie(cookie):
 def cmd_show(args):
     data = config.get_all()
     print("当前配置：")
-    print(f"  Cookie      : {_mask_cookie(data['cookie'])}")
-    print(f"  Git 目录    : {data['git_dir']}")
-    print(f"  Git 用户    : {data['git_user']}")
-    print(f"  周报姓名    : {data['weekly_name']}")
-    print(f"  确认开关    : {'开启' if data['confirm'] else '关闭'}")
-    print(f"  文档 URL    : {data['doc_url']}")
+    print(f"  Cookie          : {_mask_cookie(data['cookie'])}")
+    print(f"  Git 目录        : {data['git_dir']}")
+    print(f"  Git 用户        : {data['git_user']}")
+    print(f"  周报姓名        : {data['weekly_name']}")
+    print(f"  确认开关        : {'开启' if data['confirm'] else '关闭'}")
+    print(f"  文档 URL        : {data['doc_url']}")
+    print(f"  下周默认计划    : {data.get('nextweek_default', '')}")
     return 0
 
 
@@ -67,6 +68,7 @@ def main(argv=None):
                     '  git_week_log set-git-user "zhangsan"\n'
                     '  git_week_log set-weekly-name "张三"\n'
                     '  git_week_log set-doc-url "https://doc.weixin.qq.com/sheet/<docid>?scode=<scode>&tab=<tab>"\n'
+                    '  git_week_log set-nextweek-default "预警H5接入; 自选持仓迭代"  # 可选：下周计划默认值\n'
                     "  git_week_log show            # 查看已保存配置\n"
                     "  git_week_log do auto --yes   # 自动模式：自动归纳提交并写入\n"
                     '  git_week_log do custom       # 自定义模式：手动录入内容与进度\n'
@@ -132,11 +134,20 @@ def main(argv=None):
     p.set_defaults(func=cmd_set_confirm)
 
     p = _sub("set-doc-url", help="设置周报总文档 URL",
-                       description="保存企业微信周报总文档链接。",
-                       epilog="格式示例：\n"
-                              '  git_week_log set-doc-url "https://doc.weixin.qq.com/sheet/<docid>?scode=<scode>&tab=<tab>"')
+             description="保存企业微信周报总文档链接。",
+             epilog="格式示例：\n"
+                    '  git_week_log set-doc-url "https://doc.weixin.qq.com/sheet/<docid>?scode=<scode>&tab=<tab>"')
     p.add_argument("value", help="周报文档 URL（doc.weixin.qq.com/sheet/... 完整链接）")
     p.set_defaults(func=lambda a: _set("doc_url", a.value))
+
+    p = _sub("set-nextweek-default", help="设置下周重点计划默认值",
+             description="保存下周重点计划的默认内容；执行 do 时未传 --nextWeek 则自动采用该默认值。",
+             epilog="格式示例：\n"
+                    '  git_week_log set-nextweek-default "预警H5接入; 自选持仓迭代"\n'
+                    "说明：多条用分号(;或；)分隔。auto/custom 未传 --nextWeek 时都会使用该默认值；"
+                    "传了 --nextWeek 则覆盖默认值。执行 git_week_log show 可查看当前默认值。")
+    p.add_argument("value", help="下周重点计划内容（多条用分号(;或；)分隔）")
+    p.set_defaults(func=lambda a: _set("nextweek_default", a.value))
 
     # 查看配置
     _sub("show", help="查看当前配置",

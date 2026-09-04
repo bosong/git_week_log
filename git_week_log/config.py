@@ -16,6 +16,7 @@ DEFAULTS = {
     "weekly_name": "",
     "confirm": False,
     "doc_url": "",
+    "nextweek_default": "",
 }
 
 

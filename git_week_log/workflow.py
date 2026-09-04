@@ -186,8 +186,8 @@ def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=Fal
     """执行写周报工作流。
 
     mode: 'auto' 自动总结（进度固定 100%）/ 'custom' 自定义录入；None 则交互选择。
-    next_week: 下周重点计划文本（多条用分号分隔）。auto 模式不带则不写入；
-               custom 模式必填，未提供则交互询问。
+    next_week: 下周重点计划文本（多条用分号分隔）。未提供时回退配置
+               nextweek_default；auto 两者皆无则不写该列，custom 两者皆无则交互询问。
     """
     # 1. 数据完整性检查
     _prompt_missing()
@@ -201,6 +201,11 @@ def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=Fal
     git_user = config.get("git_user")
     weekly_name = config.get("weekly_name")
     confirm = config.get("confirm")
+    # 未显式传 --nextWeek 时，回退到配置的下周计划默认值
+    if next_week is None:
+        default_nw = config.get("nextweek_default")
+        if default_nw:
+            next_week = default_nw
 
     # 2. 模式选择
     if mode not in ("auto", "custom"):
