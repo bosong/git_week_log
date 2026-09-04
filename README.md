@@ -91,6 +91,7 @@ git_week_log do custom "A-100%; B" --nextWeek "下周计划一; 下周计划二"
 | `git_week_log set-confirm <on\|off>` | 设置是否确认日志内容（auto 模式） |
 | `git_week_log set-doc-url <url>` | 保存周报总文档 URL |
 | `git_week_log show` | 查看当前配置 |
+| `git_week_log --version` | 显示版本号 |
 | `git_week_log do [auto\|custom] [--yes]` | 执行写周报工作流 |
 
 ## 工作原理

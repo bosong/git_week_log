@@ -1,11 +1,22 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """setuptools 打包脚本：提供 console script `git_week_log`。"""
+import os
+import re
+
 from setuptools import setup, find_packages
+
+# 版本号唯一来源：git_week_log/__init__.py 的 __version__
+_here = os.path.dirname(os.path.abspath(__file__))
+with open(os.path.join(_here, "git_week_log", "__init__.py"), encoding="utf-8") as _f:
+    _version = re.search(
+        r'^__version__\s*=\s*["\']([^"\']+)["\']',
+        _f.read(), re.M,
+    ).group(1)
 
 setup(
     name="git-week-log",
-    version="0.1.5",
+    version=_version,
     description="从 Git 提交自动归纳并写入企业微信周报",
     packages=find_packages(),
     python_requires=">=3.7",

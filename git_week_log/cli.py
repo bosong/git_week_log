@@ -5,6 +5,7 @@
 import argparse
 import sys
 
+from . import __version__
 from . import config
 from . import workflow
 
@@ -60,6 +61,10 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="git_week_log",
         description="从 Git 提交自动归纳并写入企业微信周报。",
+    )
+    parser.add_argument(
+        "--version", action="version",
+        version=f"%(prog)s {__version__}",
     )
     sub = parser.add_subparsers(dest="command", metavar="命令")
 
