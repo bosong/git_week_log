@@ -3,6 +3,7 @@
 """写周报工作流：数据校验 → Cookie 校验 → 归纳 → 定位/新建工作表 → 写入"""
 
 from datetime import date
+import re
 
 from . import config
 from . import git_logs
@@ -122,7 +123,20 @@ def _run_custom_input(commits):
     return entries
 
 
-def run_do(mode=None, force_yes=False):
+def _entries_from_text(content, progress="100%"):
+    """把命令行传入的日志文本按分号（中英文 ; ； 均支持）拆分为带序号的 entries。
+
+    每条自动加序号（1. / 2. / ...），进度统一取 progress（默认 100%）。
+    """
+    if progress in (None, ""):
+        progress = "100%"
+    progress = _normalize_progress(progress)
+    parts = [p.strip() for p in re.split(r"[;；]", content) if p.strip()]
+    return [{"content": f"{i}. {p}", "progress": progress}
+            for i, p in enumerate(parts, 1)]
+
+
+def run_do(mode=None, content=None, progress=None, force_yes=False):
     """执行写周报工作流。
 
     mode: 'auto' 自动总结（进度固定 100%）/ 'custom' 自定义录入；None 则交互选择。
@@ -175,7 +189,13 @@ def run_do(mode=None, force_yes=False):
                     print("已取消写入。")
                     return 1
         else:
-            entries = _run_custom_input(commits)
+            if content:
+                entries = _entries_from_text(content, progress)
+                print(f"已从参数解析出 {len(entries)} 条日志：")
+                for e in entries:
+                    print(f"  {e['content']}  (进度 {e['progress']})")
+            else:
+                entries = _run_custom_input(commits)
             if not entries:
                 print("未录入任何日志，已取消。")
                 return 1

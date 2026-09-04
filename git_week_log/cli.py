@@ -31,7 +31,8 @@ def cmd_show(args):
 
 
 def cmd_do(args):
-    return workflow.run_do(mode=args.mode, force_yes=args.yes)
+    return workflow.run_do(mode=args.mode, content=args.content,
+                           progress=args.progress, force_yes=args.yes)
 
 
 def _set(key, value):
@@ -93,6 +94,10 @@ def main(argv=None):
     p = sub.add_parser("do", help="写本周周报（auto 自动 / custom 自定义）")
     p.add_argument("mode", nargs="?", choices=["auto", "custom"],
                    help="模式：auto 自动总结（进度固定 100%%），custom 自定义录入；省略则交互选择")
+    p.add_argument("content", nargs="?",
+                   help="custom 模式的日志内容，多条用分号(;或；)分隔，自动加序号；省略则进入交互录入")
+    p.add_argument("--progress", default=None,
+                   help="custom 模式传 content 参数时的统一进度，默认 100%%")
     p.add_argument("--yes", action="store_true", help="跳过内容确认（仅 auto 模式）")
     p.set_defaults(func=cmd_do)
 
