@@ -185,20 +185,6 @@ def _dedup(tokens):
     return out
 
 
-def group_commits(commits):
-    """将提交列表按主题分组。
-
-    返回 OrderedDict{主题: [(tag, cleaned), ...]}，保持主题首次出现顺序。
-    """
-    grouped = OrderedDict()
-    for commit in commits:
-        message = commit[2]
-        tag, cleaned = _parse(message)
-        topic = _topic_of(message)
-        grouped.setdefault(topic, []).append((tag, cleaned))
-    return grouped
-
-
 def summarize_group(topic, items):
     """将同一主题的一组提交归纳为一条周报描述。
 
@@ -250,25 +236,36 @@ def summarize_group(topic, items):
 def build_weekly_lines(commits, limit=4):
     """将提交归纳为最多 limit 条周报内容，返回带序号的字符串列表。
 
-    返回格式：['1.xxx', '2.xxx', ...]
+    提交可附带仓库别名（第 4 个元素），有别名时行文本带 "别名：" 前缀。
+    返回格式：['1.xxx', '2.xxx', ...] 或 ['1.别名：xxx', ...]
     """
     if not commits:
         return []
 
-    grouped = group_commits(commits)
+    groups = OrderedDict()  # topic -> {"alias": 别名|None, "items": [(tag, cleaned)]}
+    for c in commits:
+        alias = c[3] if len(c) > 3 and c[3] else None
+        msg = c[2]
+        topic = _topic_of(msg)
+        if topic not in groups:
+            groups[topic] = {"alias": alias, "items": []}
+        groups[topic]["items"].append(_parse(msg))
 
     # 按提交数量降序、主题首次出现顺序稳定排序
-    items = sorted(
-        grouped.items(),
-        key=lambda kv: (-len(kv[1]), list(grouped.keys()).index(kv[0])),
+    order = list(groups.keys())
+    topics = sorted(
+        groups,
+        key=lambda t: (-len(groups[t]["items"]), order.index(t)),
     )
 
     lines = []
-    for topic, group in items[:limit]:
-        lines.append(summarize_group(topic, group))
-
-    # 带序号
-    return [f"{i}. {line}" for i, line in enumerate(lines, start=1)]
+    for topic in topics[:limit]:
+        alias = groups[topic]["alias"]
+        line = summarize_group(topic, groups[topic]["items"])
+        if alias:
+            line = f"{alias}：{line}"
+        lines.append(f"{len(lines) + 1}. {line}")
+    return lines
 
 
 def split_paths(raw):
@@ -283,23 +280,49 @@ def split_paths(raw):
     return [p.strip() for p in re.split(r"[;；]", str(raw)) if p.strip()]
 
 
-def fetch_weekly_lines(paths, author, limit=4):
-    """完整流程：从（可多个）Git 仓库获取本周提交并归纳为 limit 条带序号周报。
+def parse_repo_entries(raw):
+    """把 Git 仓库配置解析为 [(别名, 路径), ...] 列表。
 
-    返回 (commits, lines)。commits 为合并后的原始提交列表（按时间倒序，可能为空）。
-    无效目录会被跳过（本函数不打印，调用方可先用 split_paths/is_git_repo 预检）。
+    每条可用 别名:路径 或 别名：路径 形式；无冒号时别名为 None。
     """
-    dirs = split_paths(paths)
-    if not dirs:
+    entries = []
+    for part in split_paths(raw):
+        pieces = re.split(r"[:：]", part, maxsplit=1)
+        if len(pieces) == 2 and pieces[0].strip():
+            entries.append((pieces[0].strip(), pieces[1].strip()))
+        else:
+            entries.append((None, part))
+    return entries
+
+
+def _repo_entries(paths):
+    """把 fetch_weekly_lines 的入参统一为 [(别名, 路径), ...]。"""
+    if isinstance(paths, (list, tuple)):
+        if all(isinstance(p, (list, tuple)) and len(p) == 2 for p in paths):
+            return [(a.strip() if a and a.strip() else None, p.strip())
+                    for a, p in paths]
+        return parse_repo_entries(paths)
+    return parse_repo_entries(paths)
+
+
+def fetch_weekly_lines(paths, author, limit=4):
+    """完整流程：从（可多个，可带别名）Git 仓库获取本周提交并归纳为周报。
+
+    配置形式支持 "仓库1:/path/a;仓库2:/path/b"，无别名即按路径原文显示。
+    返回 (commits, lines)。commits 为合并后的提交列表（按时间倒序，
+    每项 4 元组 (hash, time, msg, alias)）。无效目录会被静默跳过。
+    """
+    entries = _repo_entries(paths)
+    if not entries:
         raise ValueError("未配置有效的 Git 工作库目录")
 
     since = get_week_since_str()
     all_commits = []
-    for d in dirs:
+    for alias, d in entries:
         if not is_git_repo(d):
             continue
         raw = get_commits(author, since, d)
-        all_commits.extend(parse_commits(raw))
+        all_commits.extend(c + (alias,) for c in parse_commits(raw))
     # 跨仓库按提交时间倒序（新 → 旧）
     all_commits.sort(key=lambda c: c[1], reverse=True)
     lines = build_weekly_lines(all_commits, limit=limit)

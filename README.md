@@ -32,7 +32,8 @@ playwright install chromium
 ```bash
 # 1. 设置基础配置（任意顺序，均可通过 set-* 命令单独修改）
 git_week_log set-cookie "<浏览器复制出的完整 Cookie>"
-git_week_log set-git-dir "/repo1;/repo2"   # 支持多个 Git 目录，分号(;或；)分隔
+git_week_log set-git-dir "后端:/repo1;前端:/repo2"   # 支持多个目录(分号;或；分隔)，可用 别名:路径 加前缀
+git_week_log set-git-dir "/repo3"                    # 不加别名则保持原样输出
 git_week_log set-git-user "AAXX"
 git_week_log set-weekly-name "XXXX"
 git_week_log set-doc-url "https://doc.weixin.qq.com/sheet/<docid>?scode=<scode>&tab=<tab>"
@@ -85,7 +86,7 @@ git_week_log do custom "A-100%; B" --nextWeek "下周计划一; 下周计划二"
 | 命令 | 作用 |
 | --- | --- |
 | `git_week_log set-cookie <value>` | 保存企业微信 Cookie |
-| `git_week_log set-git-dir <path1>;<path2>` | 保存 Git 工作库目录（多个用分号 ; 或 ；分隔，合并取日志） |
+| `git_week_log set-git-dir <别名:path1;path2>` | 保存 Git 工作库目录（多个分号 ; 或 ；分隔，合并取日志；每条可用 `别名:路径`，归纳日志会带 `别名：` 前缀，如 `1.后端：xxx`） |
 | `git_week_log set-git-user <name>` | 保存 Git 提交者用户名 |
 | `git_week_log set-weekly-name <name>` | 保存周报中的姓名 |
 | `git_week_log set-confirm <on\|off>` | 设置是否确认日志内容（auto 模式） |

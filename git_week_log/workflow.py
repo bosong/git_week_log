@@ -86,11 +86,13 @@ def _prompt_mode():
 
 
 def _list_commits(commits):
-    """列出 git 提交作为参考。"""
+    """列出 git 提交作为参考（提交可带仓库别名）。"""
     if commits:
         print("\n本周 Git 提交参考：")
-        for _, t, msg in commits:
-            print(f"  - {t}  {msg}")
+        for c in commits:
+            alias = c[3] if len(c) > 3 and c[3] else None
+            prefix = f"[{alias}] " if alias else ""
+            print(f"  - {prefix}{c[1]}  {c[2]}")
     else:
         print("\n本周暂无该用户的 Git 提交记录，可手动录入。")
 
@@ -218,19 +220,21 @@ def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=Fal
         friday_str = friday.strftime("%Y-%m-%d")
         print(f"本周周五日期：{friday_str}")
 
-        # 5. 获取 git 日志（auto 归纳，custom 仅作参考；git_dir 支持多目录分号分隔）
-        dirs = git_logs.split_paths(git_dir)
-        if not dirs:
+        # 5. 获取 git 日志（auto 归纳，custom 仅作参考；
+        #    git_dir 支持 "别名:路径;路径2" 多个仓库，中英文分号分隔）
+        entries = git_logs.parse_repo_entries(git_dir)
+        if not entries:
             print("错误：未配置有效的 Git 工作库目录。")
             return 1
-        invalid = [d for d in dirs if not git_logs.is_git_repo(d)]
+        invalid = [e for e in entries if not git_logs.is_git_repo(e[1])]
         if invalid:
-            if len(invalid) == len(dirs):
-                print(f"错误：以下路径不是有效的 Git 仓库：{'；'.join(invalid)}")
+            names = [f"{a}：{p}" if a else p for a, p in invalid]
+            if len(invalid) == len(entries):
+                print(f"错误：以下路径不是有效的 Git 仓库：{'；'.join(names)}")
                 return 1
-            print(f"警告：以下路径不是有效的 Git 仓库，将跳过：{'；'.join(invalid)}")
-        print(f"正在从 {len(dirs)} 个 Git 仓库获取 {git_user} 本周提交...")
-        commits, lines = git_logs.fetch_weekly_lines(dirs, git_user, limit=4)
+            print(f"警告：以下路径不是有效的 Git 仓库，将跳过：{'；'.join(names)}")
+        print(f"正在从 {len(entries)} 个 Git 仓库获取 {git_user} 本周提交...")
+        commits, lines = git_logs.fetch_weekly_lines(entries, git_user, limit=4)
 
         if mode == "auto":
             if not commits:
