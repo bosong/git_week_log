@@ -1,0 +1,17 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.eggs/
+
+# 虚拟环境
+.venv/
+venv/
+
+# 内部计划/含内部信息的文件（不对外发布）
+PLAN.md
+
+# 系统文件
+.DS_Store
