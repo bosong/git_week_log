@@ -12,10 +12,11 @@
 
 ## 环境要求
 
-- Python **>= 3.8**（实测 3.7 语法也可运行，但核心依赖 Playwright 从 1.40 起不再支持 3.7）
-- 为什么不能更低的版本：本项目代码使用了 `f-string`（3.6+）与 `subprocess.run(capture_output=...)`（3.7+）；Playwright 是硬性依赖，1.40+ 要求 ≥3.8。
-  - Python 3.8：自动安装 Playwright 1.40~1.48
-  - Python ≥3.9：自动安装最新 Playwright
+- Python **>= 3.7**（实测 3.7 语法可完整运行；项目使用 `f-string`（3.6+）与 `subprocess.run(capture_output=...)`（3.7+），低于 3.7 无法运行）
+- Playwright 是本工具写入文档的核心依赖，不同 Python 版本自动安装对应版本：
+  - Python 3.7：Playwright 1.34~1.35（1.36 起不再支持 3.7）
+  - Python 3.8：Playwright 1.40~1.48（1.49 起要求 ≥3.9）
+  - Python ≥3.9：最新版 Playwright（推荐）
 
 ## 安装
 
