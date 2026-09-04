@@ -72,7 +72,8 @@ def main(argv=None):
                     '  git_week_log do custom       # 自定义模式：手动录入内容与进度\n'
                     "  git_week_log do custom \"功能A-80%; 功能B\" --nextWeek \"下周计划1; 下周计划2\"",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="各子命令的详细格式与示例，请执行：git_week_log <命令> --help",
+        epilog="各子命令的详细格式与示例，请执行：git_week_log <命令> --help\n"
+               "最简单的方式：直接执行  git_week_log do  按提示选择模式并填写即可。",
     )
     parser.add_argument(
         "--version", action="version",
