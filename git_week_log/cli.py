@@ -32,7 +32,8 @@ def cmd_show(args):
 
 def cmd_do(args):
     return workflow.run_do(mode=args.mode, content=args.content,
-                           progress=args.progress, force_yes=args.yes)
+                           progress=args.progress, next_week=args.next_week,
+                           force_yes=args.yes)
 
 
 def _set(key, value):
@@ -99,6 +100,9 @@ def main(argv=None):
                         "单条进度可在末尾用 - 或 － 指定，如 \"修复bug-80%\"；省略则进入交互录入")
     p.add_argument("--progress", default=None,
                    help="custom 传 content 参数时未带进度的条的默认进度（默认 100%%）")
+    p.add_argument("--nextWeek", dest="next_week", default=None,
+                   help="下周重点计划，多条用分号(;或；)分隔，自动加序号。"
+                        "auto 不带则不写入该列；custom 必填，缺省则交互询问")
     p.add_argument("--yes", action="store_true", help="跳过内容确认（仅 auto 模式）")
     p.set_defaults(func=cmd_do)
 

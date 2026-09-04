@@ -416,13 +416,15 @@ class WeComDoc:
         self._page.wait_for_timeout(1500)
         return True
 
-    def write_weekly(self, sheet_name, person_name, entries, content_col=2,
-                     expect_col=3, actual_col=4):
+    def write_weekly(self, sheet_name, person_name, entries, next_week=None,
+                     content_col=2, expect_col=3, actual_col=4, plan_col=6):
         """定位 person_name 所在行，向下连续写入周报内容与进度。
 
         entries 为 [{"content": str, "progress": str}, ...] 列表。
         content 写入 content_col 列（重点工作内容），progress 同时写入
         expect_col（预期进度）与 actual_col（实际进度）两列。
+        next_week 为 ["1. ...", ...] 列表（已带序号），写入 plan_col 列
+        （下周重点计划）；为 None 时不写该列。
         返回是否全部写入成功。
         """
         rows = self.find_person_rows(sheet_name, person_name)
@@ -431,7 +433,7 @@ class WeComDoc:
             return False
 
         start_row = rows[0]
-        total = len(entries) * 3
+        total = len(entries) * 3 + (len(next_week) if next_week else 0)
         ok_count = 0
         for i, entry in enumerate(entries):
             r = start_row + i
@@ -445,6 +447,14 @@ class WeComDoc:
             if self._ui_set_cell(sheet_name, r, actual_col, progress):
                 ok_count += 1
             self._page.wait_for_timeout(300)
+
+        if next_week:
+            for i, plan in enumerate(next_week):
+                r = start_row + i
+                print(f"  写入 {person_name} 下周计划第 {i + 1} 条 -> 行 {r + 1} (下周重点计划)...")
+                if self._ui_set_cell(sheet_name, r, plan_col, plan):
+                    ok_count += 1
+                self._page.wait_for_timeout(300)
         return ok_count == total
 
     def create_sheet_from_template(self, new_name):

@@ -150,10 +150,42 @@ def _entries_from_text(content, progress=None):
     return entries
 
 
-def run_do(mode=None, content=None, progress=None, force_yes=False):
+def _split_plain(text):
+    """把下周重点计划文本按分号（; ；）拆分为带序号的纯文本列表。
+
+    下周计划无进度列，不做 "-进度" 剥离；空输入返回空列表。
+    """
+    if not text:
+        return []
+    segs = [s.strip() for s in re.split(r"[;；]", text) if s.strip()]
+    return [f"{i}. {s}" for i, s in enumerate(segs, start=1)]
+
+
+def _prompt_next_week():
+    """交互询问下周重点计划（必填，至少一条）。填写失败返回 None。"""
+    print("\n最后填写下周重点计划（必填，至少一条；多条用分号 ; 或 ； 分隔）。")
+    for _ in range(3):
+        try:
+            raw = input("下周重点计划：").strip()
+        except EOFError:
+            raw = ""
+        plans = _split_plain(raw)
+        if plans:
+            print(f"  已记录下周计划 {len(plans)} 条。")
+            for p in plans:
+                print(f"    {p}")
+            return plans
+        print("下周重点计划不能为空，请重新输入。")
+    print("已连续 3 次未填写，取消写入。")
+    return None
+
+
+def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=False):
     """执行写周报工作流。
 
     mode: 'auto' 自动总结（进度固定 100%）/ 'custom' 自定义录入；None 则交互选择。
+    next_week: 下周重点计划文本（多条用分号分隔）。auto 模式不带则不写入；
+               custom 模式必填，未提供则交互询问。
     """
     # 1. 数据完整性检查
     _prompt_missing()
@@ -198,6 +230,8 @@ def run_do(mode=None, content=None, progress=None, force_yes=False):
             for line in lines:
                 print(f"  {line}")
             entries = [{"content": line, "progress": "100%"} for line in lines]
+            # auto：仅当显式传入 --nextWeek 才写下周计划，否则不写该列
+            next_plans = _split_plain(next_week) if next_week else None
             if confirm and not force_yes:
                 if not _confirm_lines(lines):
                     print("已取消写入。")
@@ -213,6 +247,17 @@ def run_do(mode=None, content=None, progress=None, force_yes=False):
             if not entries:
                 print("未录入任何日志，已取消。")
                 return 1
+            # custom：下周重点计划必填，优先用 --nextWeek，否则交互询问
+            if next_week:
+                next_plans = _split_plain(next_week)
+                print(f"已从参数解析出下周计划 {len(next_plans)} 条。")
+                for p in next_plans:
+                    print(f"  {p}")
+            else:
+                next_plans = _prompt_next_week()
+                if next_plans is None:
+                    print("未填写下周重点计划，已取消写入。")
+                    return 1
 
         # 6. 定位或新建工作表
         sheets = doc.list_sheets()
@@ -226,7 +271,7 @@ def run_do(mode=None, content=None, progress=None, force_yes=False):
 
         # 7. 写入
         print(f"正在将周报写入工作表 {friday_str} 的 {weekly_name} 区域...")
-        ok = doc.write_weekly(friday_str, weekly_name, entries)
+        ok = doc.write_weekly(friday_str, weekly_name, entries, next_week=next_plans)
         if not ok:
             print("错误：写入失败。")
             return 1
@@ -235,5 +280,9 @@ def run_do(mode=None, content=None, progress=None, force_yes=False):
         print("回读校验：")
         for i, entry in enumerate(entries):
             print(f"  {i + 1}. {entry['content']}  (进度 {entry['progress']})")
+        if next_plans:
+            print("下周重点计划：")
+            for p in next_plans:
+                print(f"  {p}")
 
     return 0
