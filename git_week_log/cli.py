@@ -60,7 +60,19 @@ def cmd_set_confirm(args):
 def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="git_week_log",
-        description="从 Git 提交自动归纳并写入企业微信周报。",
+        description="从 Git 提交自动归纳并写入企业微信周报文档。\n"
+                    "完整使用流程：\n"
+                    '  git_week_log set-cookie   "TOK=xxx; wedoc_sid=xxx; ..."  # 先配置(一次性)\n'
+                    '  git_week_log set-git-dir  "后端:/repo/mp;前端:/repo/h5"    # 多仓库可用 别名:路径\n'
+                    '  git_week_log set-git-user "zhangsan"\n'
+                    '  git_week_log set-weekly-name "张三"\n'
+                    '  git_week_log set-doc-url "https://doc.weixin.qq.com/sheet/<docid>?scode=<scode>&tab=<tab>"\n'
+                    "  git_week_log show            # 查看已保存配置\n"
+                    "  git_week_log do auto --yes   # 自动模式：自动归纳提交并写入\n"
+                    '  git_week_log do custom       # 自定义模式：手动录入内容与进度\n'
+                    "  git_week_log do custom \"功能A-80%; 功能B\" --nextWeek \"下周计划1; 下周计划2\"",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="各子命令的详细格式与示例，请执行：git_week_log <命令> --help",
     )
     parser.add_argument(
         "--version", action="version",
