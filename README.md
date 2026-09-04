@@ -57,7 +57,7 @@ git_week_log do custom "A; B" --progress 80
 
 #   下周重点计划（写入"下周重点计划"列，多条用分号分隔，自动加序号）：
 #   自动模式：不加 --nextWeek 则不写入该列
-git_week_log do auto --nextWeek "预警H5接入; 自选持仓迭代"
+git_week_log do auto --nextWeek "功能1接入; 功能2迭代"
 #   自定义模式：必填；缺省 --nextWeek 会在录入日志后交互询问
 git_week_log do custom "A-100%; B" --nextWeek "下周计划一; 下周计划二"
 ```
