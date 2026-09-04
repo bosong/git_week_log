@@ -33,8 +33,8 @@ playwright install chromium
 # 1. 设置基础配置（任意顺序，均可通过 set-* 命令单独修改）
 git_week_log set-cookie "<浏览器复制出的完整 Cookie>"
 git_week_log set-git-dir "/path/to/your/git/repo"
-git_week_log set-git-user "songbo"
-git_week_log set-weekly-name "宋波"
+git_week_log set-git-user "songXX"
+git_week_log set-weekly-name "XX"
 git_week_log set-doc-url "https://doc.weixin.qq.com/sheet/<docid>?scode=<scode>&tab=<tab>"
 
 # 2. 查看当前配置（Cookie 脱敏显示）
