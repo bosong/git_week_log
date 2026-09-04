@@ -218,9 +218,19 @@ def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=Fal
         friday_str = friday.strftime("%Y-%m-%d")
         print(f"本周周五日期：{friday_str}")
 
-        # 5. 获取 git 日志（auto 归纳，custom 仅作参考）
-        print(f"正在从 {git_dir} 获取 {git_user} 本周提交...")
-        commits, lines = git_logs.fetch_weekly_lines(git_dir, git_user, limit=4)
+        # 5. 获取 git 日志（auto 归纳，custom 仅作参考；git_dir 支持多目录分号分隔）
+        dirs = git_logs.split_paths(git_dir)
+        if not dirs:
+            print("错误：未配置有效的 Git 工作库目录。")
+            return 1
+        invalid = [d for d in dirs if not git_logs.is_git_repo(d)]
+        if invalid:
+            if len(invalid) == len(dirs):
+                print(f"错误：以下路径不是有效的 Git 仓库：{'；'.join(invalid)}")
+                return 1
+            print(f"警告：以下路径不是有效的 Git 仓库，将跳过：{'；'.join(invalid)}")
+        print(f"正在从 {len(dirs)} 个 Git 仓库获取 {git_user} 本周提交...")
+        commits, lines = git_logs.fetch_weekly_lines(dirs, git_user, limit=4)
 
         if mode == "auto":
             if not commits:

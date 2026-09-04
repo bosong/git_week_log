@@ -6,6 +6,7 @@
 - get_commits 增加 cwd=repo_path 参数，确保在指定仓库目录执行 git log。
 """
 
+import os
 import subprocess
 import sys
 import re
@@ -14,7 +15,9 @@ from collections import OrderedDict
 
 
 def is_git_repo(path="."):
-    """检查指定路径是否为 Git 仓库"""
+    """检查指定路径是否为 Git 仓库（目录不存在/不是目录返回 False）。"""
+    if not os.path.isdir(path):
+        return False
     try:
         subprocess.run(
             ["git", "rev-parse", "--is-inside-work-tree"],
@@ -268,16 +271,36 @@ def build_weekly_lines(commits, limit=4):
     return [f"{i}. {line}" for i, line in enumerate(lines, start=1)]
 
 
-def fetch_weekly_lines(repo_path, author, limit=4):
-    """完整流程：获取本周提交并归纳为 limit 条带序号周报。
+def split_paths(raw):
+    """拆分配置中的路径字符串，支持中英文分号（; ；）分隔多个目录。
 
-    返回 (commits, lines)。commits 为原始提交列表（可能为空）。
+    list/tuple 原样清洗返回；str 按分号拆分并去掉首尾空白。
     """
-    if not is_git_repo(repo_path):
-        raise ValueError(f"路径不是有效的 Git 仓库：{repo_path}")
+    if isinstance(raw, (list, tuple)):
+        return [p.strip() for p in raw if p.strip()]
+    if not raw:
+        return []
+    return [p.strip() for p in re.split(r"[;；]", str(raw)) if p.strip()]
+
+
+def fetch_weekly_lines(paths, author, limit=4):
+    """完整流程：从（可多个）Git 仓库获取本周提交并归纳为 limit 条带序号周报。
+
+    返回 (commits, lines)。commits 为合并后的原始提交列表（按时间倒序，可能为空）。
+    无效目录会被跳过（本函数不打印，调用方可先用 split_paths/is_git_repo 预检）。
+    """
+    dirs = split_paths(paths)
+    if not dirs:
+        raise ValueError("未配置有效的 Git 工作库目录")
 
     since = get_week_since_str()
-    raw = get_commits(author, since, repo_path)
-    commits = parse_commits(raw)
-    lines = build_weekly_lines(commits, limit=limit)
-    return commits, lines
+    all_commits = []
+    for d in dirs:
+        if not is_git_repo(d):
+            continue
+        raw = get_commits(author, since, d)
+        all_commits.extend(parse_commits(raw))
+    # 跨仓库按提交时间倒序（新 → 旧）
+    all_commits.sort(key=lambda c: c[1], reverse=True)
+    lines = build_weekly_lines(all_commits, limit=limit)
+    return all_commits, lines

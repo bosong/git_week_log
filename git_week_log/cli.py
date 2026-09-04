@@ -69,7 +69,7 @@ def main(argv=None):
     p.set_defaults(func=lambda a: _set("cookie", a.value))
 
     p = sub.add_parser("set-git-dir", help="设置 Git 工作库目录")
-    p.add_argument("value", help="目录路径")
+    p.add_argument("value", help="目录路径，多个目录用分号(;或；)分隔")
     p.set_defaults(func=lambda a: _set("git_dir", a.value))
 
     p = sub.add_parser("set-git-user", help="设置 Git 提交者用户名")
