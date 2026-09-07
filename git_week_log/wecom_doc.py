@@ -457,41 +457,159 @@ class WeComDoc:
                 self._page.wait_for_timeout(300)
         return ok_count == total
 
-    def create_sheet_from_template(self, new_name):
-        """基于最近一个工作表模板新建 new_name。
+    def create_sheet_from_template(self, new_name, template_name=None):
+        """UI 方式从模板新建工作表：右键模板 tab -> 创建副本 -> 重命名为 new_name。
 
-        尝试 worksheetManager 的复制/新建 API；失败返回 False。
-        注意：具体 API 名称需在有效 Cookie 下实机确认，此处做多方法兼容尝试。
+        返回 'exists'（目标已存在）/ True / False；找不到可用模板时抛 RuntimeError。
+        模板选择顺序：template_name 指定 > '周报空模板' > 名称含"模板"的表 > 最后一表。
         """
+        names = self.list_sheets()
+        if new_name in names:
+            return "exists"
+        tpl = (
+            template_name
+            or next((n for n in names if n == "周报空模板"), None)
+            or next((n for n in names if "模板" in n), None)
+            or (names[-1] if names else None)
+        )
+        if not tpl:
+            raise RuntimeError("文档中没有可用作模板的工作表。")
+        print(f"基于模板工作表「{tpl}」创建 {new_name} ...")
+
+        if not self._open_tab_menu(tpl, "创建副本"):
+            return False
+        # 创建副本有服务端延迟，轮询等待新表出现（最长约 44s）
+        copy_name = None
+        for _ in range(22):
+            self._page.wait_for_timeout(2000)
+            now = self.list_sheets()
+            delta = [n for n in now if n not in names]
+            if delta:
+                copy_name = delta[0]
+                break
+        if not copy_name:
+            return False
+        print(f"已生成副本「{copy_name}」，正在重命名为 {new_name} ...")
+        return self._ui_rename_sheet(copy_name, new_name)
+
+    # ---------------- UI 辅助（工作表标签菜单） ----------------
+
+    def _tab_center(self, name):
+        """返回工作表标签页在视口中的中心坐标；找不到返回 None。"""
         script = r"""
-        async (args) => {
-            const app = window.SpreadsheetApp;
-            const wm = app && app.workbook && app.workbook.worksheetManager;
-            if (!wm) return false;
-            const names = wm.getSheetNameList();
-            if (names.indexOf(args.name) >= 0) return 'exists';
-            const templateId = wm.getSheetIdList()[names.length - 1];
-            const fnNames = ['copySheet', 'duplicateSheet', 'cloneSheet', 'createSheet', 'addSheet'];
-            for (const fnName of fnNames) {
-                const fn = wm[fnName];
-                if (typeof fn !== 'function') continue;
-                try {
-                    if (fnName === 'createSheet' || fnName === 'addSheet') {
-                        fn(args.name);
-                    } else {
-                        fn(templateId, args.name);
-                    }
-                    return true;
-                } catch (e) {}
+        (name) => {
+            const els = document.querySelectorAll('*');
+            let best = null;
+            for (const el of els) {
+                if (el.children.length > 2) continue;
+                if ((el.textContent || '').trim() !== name) continue;
+                const r = el.getBoundingClientRect();
+                if (r.width <= 0 || r.height <= 0) continue;
+                const area = r.width * r.height;
+                if (!best || area < best.area) {
+                    best = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+                }
             }
-            return false;
+            return best;
         }
         """
         try:
-            result = self._page.evaluate(script, {"name": new_name})
+            return self._page.evaluate(script, name)
+        except Exception:
+            return None
+
+    def _click_menu_item(self, text):
+        """假定右键菜单已打开，点击文本完全等于 text 的可见菜单项。"""
+        script = r"""
+        (text) => {
+            const els = document.querySelectorAll('*');
+            let best = null;
+            for (const el of els) {
+                if (el.children.length > 0) continue;
+                if ((el.textContent || '').trim() !== text) continue;
+                const r = el.getBoundingClientRect();
+                if (r.width <= 0 || r.height <= 0) continue;
+                const area = r.width * r.height;
+                if (!best || area < best.area) {
+                    best = { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+                }
+            }
+            return best;
+        }
+        """
+        try:
+            m = self._page.evaluate(script, text)
         except Exception:
             return False
-        if not result:
+        if not m:
             return False
-        self._page.wait_for_timeout(2000)
-        return new_name in self.list_sheets()
+        self._page.mouse.move(m["x"], m["y"])
+        self._page.wait_for_timeout(300)
+        self._page.mouse.click(m["x"], m["y"])
+        return True
+
+    def _open_tab_menu(self, name, item_text):
+        """右键工作表标签并点击菜单项；成功返回 True。"""
+        pos = self._tab_center(name)
+        if not pos:
+            return False
+        self._page.mouse.click(pos["x"], pos["y"], button="right")
+        self._page.wait_for_timeout(1200)
+        return self._click_menu_item(item_text)
+
+    def _focus_sheet_name_editor(self):
+        """聚焦工作表名编辑框（标签栏内的 input/可编辑文本）。"""
+        script = r"""
+        () => {
+            const sel = '.docs-tab-bar input, .docs-tab-bar [contenteditable="true"]';
+            let found = null;
+            const list = document.querySelectorAll(sel);
+            for (const el of list) {
+                const r = el.getBoundingClientRect();
+                if (r.width <= 0 || r.height <= 0) continue;
+                found = el;
+                break;
+            }
+            if (!found) return null;
+            const r = found.getBoundingClientRect();
+            try { found.focus(); } catch (e) {}
+            return { x: r.x + r.width / 2, y: r.y + r.height / 2 };
+        }
+        """
+        try:
+            info = self._page.evaluate(script)
+        except Exception:
+            return False
+        if not info:
+            return False
+        self._page.mouse.click(info["x"], info["y"])
+        self._page.wait_for_timeout(300)
+        return True
+
+    def _ui_rename_sheet(self, old_name, new_name):
+        """双击工作表标签进入编辑并输入新名称，验证重命名成功。"""
+        pos = self._tab_center(old_name)
+        if not pos:
+            return False
+        self._page.mouse.click(pos["x"], pos["y"])
+        self._page.wait_for_timeout(500)
+        self._page.mouse.dblclick(pos["x"], pos["y"])
+        self._page.wait_for_timeout(900)
+        if not self._focus_sheet_name_editor():
+            # 双击未进入编辑态，改用右键菜单「重命名」
+            if not self._open_tab_menu(old_name, "重命名"):
+                return False
+            self._page.wait_for_timeout(900)
+            if not self._focus_sheet_name_editor():
+                return False
+        self._page.keyboard.press("Meta+A")
+        self._page.keyboard.press("Backspace")
+        self._page.keyboard.type(new_name, delay=20)
+        self._page.keyboard.press("Enter")
+        self._page.wait_for_timeout(2500)
+        for _ in range(4):
+            now = self.list_sheets()
+            if new_name in now and old_name not in now:
+                return True
+            self._page.wait_for_timeout(1000)
+        return False

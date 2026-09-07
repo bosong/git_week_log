@@ -282,10 +282,14 @@ def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=Fal
         sheets = doc.list_sheets()
         print(f"文档中已有 {len(sheets)} 个工作表。")
         if friday_str not in sheets:
-            print(f"未找到 {friday_str} 工作表，将基于上一周模板新建。")
-            created = doc.create_sheet_from_template(friday_str)
+            print(f"未找到 {friday_str} 工作表，将基于模板工作表（UI 方式）新建。")
+            try:
+                created = doc.create_sheet_from_template(friday_str)
+            except RuntimeError as e:
+                print(f"错误：{e}")
+                return 1
             if not created:
-                print("错误：新建工作表失败。")
+                print("错误：新建工作表失败（模板缺失或创建/重命名超时）。")
                 return 1
 
         # 7. 写入
