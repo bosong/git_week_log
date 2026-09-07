@@ -41,6 +41,9 @@ git_week_log set-doc-url "https://doc.weixin.qq.com/sheet/<docid>?scode=<scode>&
 # 2. 查看当前配置（Cookie 脱敏显示）
 git_week_log show
 
+# 2.5 只看日志：列出各仓库本周提交与合并归纳（不写文档、不需 Cookie）
+git_week_log get
+
 # 3. 写入周报：自动模式（省略 mode 会交互询问）
 git_week_log do auto
 git_week_log do auto --yes
@@ -95,6 +98,7 @@ git_week_log do custom "功能A-80%; 功能B" --doc_date 2026-09-10 --nextWeek "
 | `git_week_log set-doc-url <url>` | 保存周报总文档 URL |
 | `git_week_log set-nextweek-default <内容>` | 保存下周重点计划默认值（do 未传 `--nextWeek` 时自动采用；`show` 可查看） |
 | `git_week_log show` | 查看当前配置 |
+| `git_week_log get` | 只读列出各仓库本周 Git 提交与合并归纳（不访问文档、不需 Cookie） |
 | `git_week_log --version` | 显示版本号 |
 | `git_week_log do [auto\|custom] [--yes]` | 执行写周报工作流 |
 

@@ -38,6 +38,10 @@ def cmd_do(args):
                            force_yes=args.yes, doc_date=args.doc_date)
 
 
+def cmd_get(args):
+    return workflow.run_get()
+
+
 def _set(key, value):
     config.set(key, value)
     print(f"已保存 {key}。")
@@ -70,6 +74,7 @@ def main(argv=None):
                     '  git_week_log set-doc-url "https://doc.weixin.qq.com/sheet/<docid>?scode=<scode>&tab=<tab>"\n'
                     '  git_week_log set-nextweek-default "预警H5接入; 自选持仓迭代"  # 可选：下周计划默认值\n'
                     "  git_week_log show            # 查看已保存配置\n"
+                    "  git_week_log get             # 列出各仓库日志与合并归纳（不写文档）\n"
                     "  git_week_log do auto --yes   # 自动模式：自动归纳提交并写入\n"
                     '  git_week_log do custom       # 自定义模式：手动录入内容与进度\n'
                     "  git_week_log do custom \"功能A-80%; 功能B\" --nextWeek \"下周计划1; 下周计划2\"",
@@ -155,6 +160,16 @@ def main(argv=None):
                    epilog="格式示例：git_week_log show").set_defaults(func=cmd_show)
 
     # 核心工作流
+    p = _sub(
+        "get", help="列出各仓库 Git 日志与合并归纳（不写文档）",
+        description="按仓库分组列出 git_user 本周提交，最后展示合并后的周报归纳。"
+                    "只读取 Git 日志，不访问周报文档。",
+        epilog="格式示例：\n"
+               '  git_week_log get\n'
+               '  git_week_log set-git-dir "后端:/repo/mp;前端:/repo/h5" && git_week_log get',
+    )
+    p.set_defaults(func=cmd_get)
+
     p = _sub(
         "do", help="写本周周报（auto 自动 / custom 自定义）",
         description="执行写周报完整工作流：校验配置/Cookie → 定位或新建日期工作表 → 写入本周内容与下周计划。",

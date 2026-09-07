@@ -182,6 +182,63 @@ def _prompt_next_week():
     return None
 
 
+def run_get():
+    """get：仅列出各仓库 Git 日志与合并归纳，不访问文档。
+
+    按仓库分组列出 git_user 本周提交，最后展示合并后的周报归纳。
+    """
+    git_dir = config.get("git_dir")
+    git_user = config.get("git_user")
+    if not git_dir or not git_user:
+        print("缺少 get 命令所需配置：")
+        if not git_dir:
+            print("  - git_dir （Git 工作库目录，可多目录；用分号分隔）→ set-git-dir")
+        if not git_user:
+            print("  - git_user（Git 提交者用户名）→ set-git-user")
+        return 1
+
+    entries = git_logs.parse_repo_entries(git_dir)
+    if not entries:
+        print("错误：未配置有效的 Git 工作库目录。")
+        return 1
+    invalid = [e for e in entries if not git_logs.is_git_repo(e[1])]
+    if invalid:
+        names = [f"{a}：{p}" if a else p for a, p in invalid]
+        if len(invalid) == len(entries):
+            print(f"错误：以下路径不是有效的 Git 仓库：{'；'.join(names)}")
+            return 1
+        print(f"警告：以下路径不是有效的 Git 仓库，将跳过：{'；'.join(names)}")
+
+    since = git_logs.get_week_since_str()
+    monday = git_logs.get_week_monday().strftime("%Y-%m-%d")
+    print(f"仓库日志范围：{monday} 至今（提交者 {git_user}）")
+    total = 0
+    for alias, d in entries:
+        if not git_logs.is_git_repo(d):
+            continue
+        rows = git_logs.parse_commits(git_logs.get_commits(git_user, since, d))
+        label = alias or d
+        print(f"\n【仓库】{label}")
+        if not rows:
+            print("  （本周无提交）")
+            continue
+        total += len(rows)
+        for i, c in enumerate(rows, start=1):
+            print(f"  {i:>2}. {c[1]}  [{c[0]}]  {c[2]}")
+    print(f"\n合计 {total} 条提交。")
+    if total:
+        _, lines = git_logs.fetch_weekly_lines(entries, git_user, limit=4)
+        if lines:
+            print("合并归纳（最多 4 条）：")
+            for line in lines:
+                print(f"  {line}")
+        else:
+            print("提交过于零散，未能归纳出内容。")
+    else:
+        print("本周无提交，无合并归纳。")
+    return 0
+
+
 def run_do(mode=None, content=None, progress=None, next_week=None,
            force_yes=False, doc_date=None):
     """执行写周报工作流。
