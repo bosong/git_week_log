@@ -476,17 +476,22 @@ class WeComDoc:
             raise RuntimeError("文档中没有可用作模板的工作表。")
         print(f"基于模板工作表「{tpl}」创建 {new_name} ...")
 
-        if not self._open_tab_menu(tpl, "创建副本"):
-            return False
-        # 创建副本有服务端延迟，轮询等待新表出现（最长约 44s）
+        # 右键菜单点击偶发失效，创建副本做多轮重试（含服务端延迟轮询）
         copy_name = None
-        for _ in range(22):
-            self._page.wait_for_timeout(2000)
-            now = self.list_sheets()
-            delta = [n for n in now if n not in names]
-            if delta:
-                copy_name = delta[0]
+        base = names
+        for _attempt in range(3):
+            if not self._open_tab_menu(tpl, "创建副本"):
+                continue
+            for _ in range(5):  # 单轮最长约 10s
+                self._page.wait_for_timeout(2000)
+                now = self.list_sheets()
+                delta = [n for n in now if n not in base]
+                if delta:
+                    copy_name = delta[0]
+                    break
+            if copy_name:
                 break
+            print("  副本未生成，重试创建…")
         if not copy_name:
             return False
         print(f"已生成副本「{copy_name}」，正在重命名为 {new_name} ...")
@@ -518,8 +523,8 @@ class WeComDoc:
         except Exception:
             return None
 
-    def _click_menu_item(self, text):
-        """假定右键菜单已打开，点击文本完全等于 text 的可见菜单项。"""
+    def _find_menu_item(self, text):
+        """返回文本完全等于 text 的可见菜单项坐标；找不到返回 None。"""
         script = r"""
         (text) => {
             const els = document.querySelectorAll('*');
@@ -538,9 +543,19 @@ class WeComDoc:
         }
         """
         try:
-            m = self._page.evaluate(script, text)
+            return self._page.evaluate(script, text)
         except Exception:
-            return False
+            return None
+
+    def _click_menu_item(self, text):
+        """假定右键菜单已打开，等待菜单项出现后点击；失败返回 False。"""
+        # 菜单有弹出动画，轮询等待菜单项稳定出现
+        m = None
+        for _ in range(8):
+            m = self._find_menu_item(text)
+            if m:
+                break
+            self._page.wait_for_timeout(500)
         if not m:
             return False
         self._page.mouse.move(m["x"], m["y"])
@@ -553,8 +568,10 @@ class WeComDoc:
         pos = self._tab_center(name)
         if not pos:
             return False
+        self._page.mouse.move(pos["x"], pos["y"])
+        self._page.wait_for_timeout(250)
         self._page.mouse.click(pos["x"], pos["y"], button="right")
-        self._page.wait_for_timeout(1200)
+        self._page.wait_for_timeout(900)
         return self._click_menu_item(item_text)
 
     def _focus_sheet_name_editor(self):
@@ -586,6 +603,30 @@ class WeComDoc:
         self._page.wait_for_timeout(300)
         return True
 
+    def _select_all_in_editor(self):
+        """聚焦并全选工作表名编辑框内容；返回是否找到编辑框。"""
+        script = r"""
+        () => {
+            const sel = '.docs-tab-bar input, .docs-tab-bar textarea, .docs-tab-bar [contenteditable="true"]';
+            for (const el of document.querySelectorAll(sel)) {
+                const r = el.getBoundingClientRect();
+                if (r.width <= 0 || r.height <= 0) continue;
+                try { el.focus(); } catch (e) {}
+                if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                    try { el.select(); } catch (e) {}
+                } else {
+                    try { const s = window.getSelection(); s.selectAllChildren(el); } catch (e) {}
+                }
+                return true;
+            }
+            return false;
+        }
+        """
+        try:
+            return bool(self._page.evaluate(script))
+        except Exception:
+            return False
+
     def _ui_rename_sheet(self, old_name, new_name):
         """双击工作表标签进入编辑并输入新名称，验证重命名成功。"""
         pos = self._tab_center(old_name)
@@ -602,8 +643,10 @@ class WeComDoc:
             self._page.wait_for_timeout(900)
             if not self._focus_sheet_name_editor():
                 return False
-        self._page.keyboard.press("Meta+A")
-        self._page.keyboard.press("Backspace")
+        if not self._select_all_in_editor():
+            # JS 全选失败时兜底：多次退格清空后输入
+            for _ in range(30):
+                self._page.keyboard.press("Backspace")
         self._page.keyboard.type(new_name, delay=20)
         self._page.keyboard.press("Enter")
         self._page.wait_for_timeout(2500)
