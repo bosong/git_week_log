@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 """写周报工作流：数据校验 → Cookie 校验 → 归纳 → 定位/新建工作表 → 写入"""
 
-from datetime import date
+from datetime import date, datetime
 import re
 
 from . import config
@@ -182,12 +182,14 @@ def _prompt_next_week():
     return None
 
 
-def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=False):
+def run_do(mode=None, content=None, progress=None, next_week=None,
+           force_yes=False, doc_date=None):
     """执行写周报工作流。
 
     mode: 'auto' 自动总结（进度固定 100%）/ 'custom' 自定义录入；None 则交互选择。
     next_week: 下周重点计划文本（多条用分号分隔）。未提供时回退配置
                nextweek_default；auto 两者皆无则不写该列，custom 两者皆无则交互询问。
+    doc_date: 目标工作表日期（YYYY-MM-DD），缺省用本周周五日期。
     """
     # 1. 数据完整性检查
     _prompt_missing()
@@ -220,10 +222,19 @@ def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=Fal
             print("请重新执行 do 命令。")
             return 1
 
-        # 4. 计算本周周五日期
+        # 4. 计算目标工作表日期（默认本周周五；可用 --doc_date 覆盖）
         friday = git_logs.get_week_friday()
         friday_str = friday.strftime("%Y-%m-%d")
         print(f"本周周五日期：{friday_str}")
+        target_str = friday_str
+        if doc_date:
+            d = doc_date.strip()
+            try:
+                target_str = datetime.strptime(d, "%Y-%m-%d").strftime("%Y-%m-%d")
+            except ValueError:
+                print(f"错误：--doc_date 格式无效（{d!r}），应为 YYYY-MM-DD，例如 2026-09-10。")
+                return 1
+            print(f"已指定目标日期：{target_str}")
 
         # 5. 获取 git 日志（auto 归纳，custom 仅作参考；
         #    git_dir 支持 "别名:路径;路径2" 多个仓库，中英文分号分隔）
@@ -281,10 +292,10 @@ def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=Fal
         # 6. 定位或新建工作表
         sheets = doc.list_sheets()
         print(f"文档中已有 {len(sheets)} 个工作表。")
-        if friday_str not in sheets:
-            print(f"未找到 {friday_str} 工作表，将基于模板工作表（UI 方式）新建。")
+        if target_str not in sheets:
+            print(f"未找到 {target_str} 工作表，将基于模板工作表（UI 方式）新建。")
             try:
-                created = doc.create_sheet_from_template(friday_str)
+                created = doc.create_sheet_from_template(target_str)
             except RuntimeError as e:
                 print(f"错误：{e}")
                 return 1
@@ -293,8 +304,8 @@ def run_do(mode=None, content=None, progress=None, next_week=None, force_yes=Fal
                 return 1
 
         # 7. 写入
-        print(f"正在将周报写入工作表 {friday_str} 的 {weekly_name} 区域...")
-        ok = doc.write_weekly(friday_str, weekly_name, entries, next_week=next_plans)
+        print(f"正在将周报写入工作表 {target_str} 的 {weekly_name} 区域...")
+        ok = doc.write_weekly(target_str, weekly_name, entries, next_week=next_plans)
         if not ok:
             print("错误：写入失败。")
             return 1

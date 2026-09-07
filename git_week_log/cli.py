@@ -35,7 +35,7 @@ def cmd_show(args):
 def cmd_do(args):
     return workflow.run_do(mode=args.mode, content=args.content,
                            progress=args.progress, next_week=args.next_week,
-                           force_yes=args.yes)
+                           force_yes=args.yes, doc_date=args.doc_date)
 
 
 def _set(key, value):
@@ -164,6 +164,7 @@ def main(argv=None):
                '  git_week_log do custom "修复登录bug-80%; 优化首页; 增加埋点"\n'
                '  git_week_log do custom "功能A" --progress 80\n'
                '  git_week_log do custom "A; B" --nextWeek "下周计划1; 下周计划2"\n'
+               '  git_week_log do custom "功能A-80%; 功能B" --doc_date 2026-09-10 --nextWeek "下周计划1; 下周计划2"\n'
                "说明：custom 内容多条用分号(;或；)分隔并自动加序号；"
                "每条末尾可用 - 或 － 指定进度（不填默认 100%）。",
     )
@@ -178,6 +179,9 @@ def main(argv=None):
     p.add_argument("--nextWeek", "--nextweek", dest="next_week", default=None,
                    help="下周重点计划，多条用分号(;或；)分隔，自动加序号。"
                         "auto 不带则不写入该列；custom 必填，缺省则交互询问")
+    p.add_argument("--doc_date", dest="doc_date", default=None,
+                   help="目标工作表日期 YYYY-MM-DD（如 2026-09-10），缺省用本周周五日期。"
+                        "auto/custom 均适用")
     p.add_argument("--yes", action="store_true", help="跳过内容确认（仅 auto 模式）")
     p.set_defaults(func=cmd_do)
 

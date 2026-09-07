@@ -60,6 +60,8 @@ git_week_log do custom "A; B" --progress 80
 git_week_log do auto --nextWeek "功能1接入; 功能2迭代"
 #   自定义模式：必填；缺省 --nextWeek 会在录入日志后交互询问
 git_week_log do custom "A-100%; B" --nextWeek "下周计划一; 下周计划二"
+#   指定目标工作表日期（缺省为本周周五日期；auto/custom 均支持）
+git_week_log do custom "功能A-80%; 功能B" --doc_date 2026-09-10 --nextWeek "计划1; 计划2"
 ```
 
 ### Cookie 获取方法
