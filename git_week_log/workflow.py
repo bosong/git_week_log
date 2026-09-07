@@ -182,10 +182,11 @@ def _prompt_next_week():
     return None
 
 
-def run_get():
+def run_get(since_date=None):
     """get：仅列出各仓库 Git 日志与合并归纳，不访问文档。
 
-    按仓库分组列出 git_user 本周提交，最后展示合并后的周报归纳。
+    按仓库分组列出 git_user 自 since_date（缺省本周一）起的提交，
+    最后展示合并后的周报归纳。
     """
     git_dir = config.get("git_dir")
     git_user = config.get("git_user")
@@ -196,6 +197,21 @@ def run_get():
         if not git_user:
             print("  - git_user（Git 提交者用户名）→ set-git-user")
         return 1
+
+    # 起始日期：缺省本周一；--since 需为 YYYY-MM-DD
+    if since_date:
+        try:
+            since_str = datetime.strptime(
+                since_date.strip(), "%Y-%m-%d").strftime("%Y-%m-%d 00:00:00")
+        except ValueError:
+            print(f"错误：--since 日期格式无效（{since_date.strip()!r}）。")
+            print("正确写法：YYYY-MM-DD，例如 2026-09-01（本周一为 "
+                  + git_logs.get_week_monday().strftime("%Y-%m-%d") + "）。")
+            return 1
+        range_start = since_date.strip()
+    else:
+        since_str = git_logs.get_week_since_str()
+        range_start = git_logs.get_week_monday().strftime("%Y-%m-%d")
 
     entries = git_logs.parse_repo_entries(git_dir)
     if not entries:
@@ -209,14 +225,12 @@ def run_get():
             return 1
         print(f"警告：以下路径不是有效的 Git 仓库，将跳过：{'；'.join(names)}")
 
-    since = git_logs.get_week_since_str()
-    monday = git_logs.get_week_monday().strftime("%Y-%m-%d")
-    print(f"仓库日志范围：{monday} 至今（提交者 {git_user}）")
+    print(f"仓库日志范围：{range_start} 至今（提交者 {git_user}）")
     total = 0
     for alias, d in entries:
         if not git_logs.is_git_repo(d):
             continue
-        rows = git_logs.parse_commits(git_logs.get_commits(git_user, since, d))
+        rows = git_logs.parse_commits(git_logs.get_commits(git_user, since_str, d))
         label = alias or d
         print(f"\n【仓库】{label}")
         if not rows:
@@ -227,7 +241,8 @@ def run_get():
             print(f"  {i:>2}. {c[1]}  [{c[0]}]  {c[2]}")
     print(f"\n合计 {total} 条提交。")
     if total:
-        _, lines = git_logs.fetch_weekly_lines(entries, git_user, limit=4)
+        _, lines = git_logs.fetch_weekly_lines(
+            entries, git_user, limit=4, since=since_str)
         if lines:
             print("合并归纳（最多 4 条）：")
             for line in lines:

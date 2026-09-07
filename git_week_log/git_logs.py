@@ -305,10 +305,11 @@ def _repo_entries(paths):
     return parse_repo_entries(paths)
 
 
-def fetch_weekly_lines(paths, author, limit=4):
-    """完整流程：从（可多个，可带别名）Git 仓库获取本周提交并归纳为周报。
+def fetch_weekly_lines(paths, author, limit=4, since=None):
+    """完整流程：从（可多个，可带别名）Git 仓库获取提交并归纳为周报。
 
     配置形式支持 "仓库1:/path/a;仓库2:/path/b"，无别名即按路径原文显示。
+    since 为日志起始时间字符串（如 "2026-09-01 00:00:00"），缺省用本周一。
     返回 (commits, lines)。commits 为合并后的提交列表（按时间倒序，
     每项 4 元组 (hash, time, msg, alias)）。无效目录会被静默跳过。
     """
@@ -316,12 +317,12 @@ def fetch_weekly_lines(paths, author, limit=4):
     if not entries:
         raise ValueError("未配置有效的 Git 工作库目录")
 
-    since = get_week_since_str()
+    since_str = since or get_week_since_str()
     all_commits = []
     for alias, d in entries:
         if not is_git_repo(d):
             continue
-        raw = get_commits(author, since, d)
+        raw = get_commits(author, since_str, d)
         all_commits.extend(c + (alias,) for c in parse_commits(raw))
     # 跨仓库按提交时间倒序（新 → 旧）
     all_commits.sort(key=lambda c: c[1], reverse=True)

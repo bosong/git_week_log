@@ -39,7 +39,7 @@ def cmd_do(args):
 
 
 def cmd_get(args):
-    return workflow.run_get()
+    return workflow.run_get(since_date=args.since)
 
 
 def _set(key, value):
@@ -162,12 +162,15 @@ def main(argv=None):
     # 核心工作流
     p = _sub(
         "get", help="列出各仓库 Git 日志与合并归纳（不写文档）",
-        description="按仓库分组列出 git_user 本周提交，最后展示合并后的周报归纳。"
-                    "只读取 Git 日志，不访问周报文档。",
+        description="按仓库分组列出 git_user 自起始日期（缺省本周一）起的提交，"
+                    "最后展示合并后的周报归纳。只读取 Git 日志，不访问周报文档。",
         epilog="格式示例：\n"
                '  git_week_log get\n'
+               '  git_week_log get --since 2026-09-01\n'
                '  git_week_log set-git-dir "后端:/repo/mp;前端:/repo/h5" && git_week_log get',
     )
+    p.add_argument("--since", dest="since", default=None,
+                   help="日志起始日期 YYYY-MM-DD（缺省用本周一）")
     p.set_defaults(func=cmd_get)
 
     p = _sub(
