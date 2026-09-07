@@ -656,3 +656,23 @@ class WeComDoc:
                 return True
             self._page.wait_for_timeout(1000)
         return False
+
+    def delete_sheet(self, name):
+        """通过 UI 删除工作表：右键标签 -> 菜单「删除」-> 确认弹窗点「确定」。
+
+        直接调用内部 deleteSheetBySheetId 只改前端内存、不触发协同提交，
+        刷新后会恢复，因此必须走 UI 操作才能真实删除。
+        """
+        if name not in self.list_sheets():
+            return True
+        # 右键 -> 菜单项「删除」（点击后弹出确认框）
+        if not self._open_tab_menu(name, "删除"):
+            return False
+        # 确认框按钮为「确定」（菜单此刻已关闭，不会误匹配）
+        if not self._click_menu_item("确定"):
+            return False
+        for _ in range(6):
+            self._page.wait_for_timeout(1500)
+            if name not in self.list_sheets():
+                return True
+        return False
