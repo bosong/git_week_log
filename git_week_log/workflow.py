@@ -226,6 +226,12 @@ def run_get(since_date=None):
         print(f"警告：以下路径不是有效的 Git 仓库，将跳过：{'；'.join(names)}")
 
     print(f"仓库日志范围：{range_start} 至今（提交者 {git_user}）")
+    # 起始跨度超过一周（>7 天）时，合并归纳不再限制 4 条
+    limit = 4
+    if since_date:
+        start = datetime.strptime(since_str, "%Y-%m-%d %H:%M:%S").date()
+        if (date.today() - start).days > 7:
+            limit = None
     total = 0
     for alias, d in entries:
         if not git_logs.is_git_repo(d):
@@ -242,9 +248,12 @@ def run_get(since_date=None):
     print(f"\n合计 {total} 条提交。")
     if total:
         _, lines = git_logs.fetch_weekly_lines(
-            entries, git_user, limit=4, since=since_str)
+            entries, git_user, limit=limit, since=since_str)
         if lines:
-            print("合并归纳（最多 4 条）：")
+            if limit is None:
+                print("合并归纳（跨周不限制条数）：")
+            else:
+                print("合并归纳（最多 4 条）：")
             for line in lines:
                 print(f"  {line}")
         else:
