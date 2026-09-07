@@ -66,7 +66,7 @@ def main(argv=None):
     parser = argparse.ArgumentParser(
         prog="git_week_log",
         description="从 Git 提交自动归纳并写入企业微信周报文档。\n"
-                    "完整使用流程：\n"
+                    "Examples:\n"
                     '  git_week_log set-cookie   "TOK=xxx; wedoc_sid=xxx; ..."  # 先配置(一次性)\n'
                     '  git_week_log set-git-dir  "后端:/repo/mp;前端:/repo/h5"    # 多仓库可用 别名:路径\n'
                     '  git_week_log set-git-user "zhangsan"\n'
