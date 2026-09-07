@@ -380,6 +380,25 @@ class WeComDoc:
             pass
         self._page.wait_for_timeout(400)
 
+    def _select_all_active_editor(self):
+        """全选当前处于焦点的编辑框（input/textarea/contenteditable）。"""
+        script = r"""
+        () => {
+            const el = document.activeElement;
+            if (!el) return false;
+            if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                try { el.select(); return true; } catch (e) {}
+            } else if (el.isContentEditable) {
+                try { const s = window.getSelection(); s.selectAllChildren(el); return true; } catch (e) {}
+            }
+            return false;
+        }
+        """
+        try:
+            return bool(self._page.evaluate(script))
+        except Exception:
+            return False
+
     def _ui_set_cell(self, sheet_name, row, col, text):
         """按 UI 操作方式把 text 写入 (row, col)（0 基索引）。
 
@@ -402,8 +421,9 @@ class WeComDoc:
         self._page.mouse.dblclick(pt["x"], pt["y"])
         self._page.wait_for_timeout(700)
 
-        # 全选清空 + 输入
-        self._page.keyboard.press("Meta+a")
+        # 全选清空 + 输入（headless 下 Meta+A 组合键不可靠，改用焦点框 select()）
+        if not self._select_all_active_editor():
+            self._page.keyboard.press("Meta+a")
         self._page.keyboard.type(text, delay=20)
         self._page.wait_for_timeout(300)
 
