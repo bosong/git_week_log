@@ -232,7 +232,9 @@ def run_do(mode=None, content=None, progress=None, next_week=None,
             try:
                 target_str = datetime.strptime(d, "%Y-%m-%d").strftime("%Y-%m-%d")
             except ValueError:
-                print(f"错误：--doc_date 格式无效（{d!r}），应为 YYYY-MM-DD，例如 2026-09-10。")
+                print(f"错误：--doc_date 格式无效（{d!r}）。")
+                print(f"正确写法：YYYY-MM-DD，例如 {friday_str}（本周五）。")
+                print("  说明：月份和日期为两位数；可用单引号包裹避免 shell 转义，如 \"2026-09-10\"。")
                 return 1
             print(f"已指定目标日期：{target_str}")
 
